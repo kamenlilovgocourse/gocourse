@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+option go_package = "github.com/kamenlilovgocourse/gocourse/project/cachegrpc";
+
+package cachegrpc;
+
+// Interface exported by the server.
+service CacheServer {
+  rpc GetClientID(AssignClientID) returns (AssignedClientID) {}
+
+}
+
+message AssignClientID {
+  int32 dummy = 1;
+}
+
+message AssignedClientID {
+  string id = 1;
+}
+
