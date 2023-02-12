@@ -2,12 +2,17 @@ syntax = "proto3";
 
 option go_package = "github.com/kamenlilovgocourse/gocourse/project/cachegrpc";
 
+import "google/protobuf/timestamp.proto";
+
 package cachegrpc;
 
 // Interface exported by the server.
 service CacheServer {
   rpc GetClientID(AssignClientID) returns (AssignedClientID) {}
 
+  rpc SetItem(SetItemParams) returns (SetItemResult) {}
+
+  rpc GetItem(GetItemParams) returns (GetItemResult) {}
 }
 
 message AssignClientID {
@@ -18,3 +23,25 @@ message AssignedClientID {
   string id = 1;
 }
 
+message SetItemParams {
+  string owner = 1;
+  string service = 2;
+  string name = 3;
+  string value = 4;
+  google.protobuf.Timestamp expiry = 5;
+}
+
+message SetItemResult {
+  int32 dummy = 1;
+}
+
+message GetItemParams {
+  string owner = 1;
+  string service = 2;
+  string name = 3;
+}
+
+message GetItemResult {
+  string value = 1;
+  google.protobuf.Timestamp expiry = 2;
+}

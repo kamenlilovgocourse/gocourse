@@ -23,6 +23,8 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type CacheServerClient interface {
 	GetClientID(ctx context.Context, in *AssignClientID, opts ...grpc.CallOption) (*AssignedClientID, error)
+	SetItem(ctx context.Context, in *SetItemParams, opts ...grpc.CallOption) (*SetItemResult, error)
+	GetItem(ctx context.Context, in *GetItemParams, opts ...grpc.CallOption) (*GetItemResult, error)
 }
 
 type cacheServerClient struct {
@@ -42,11 +44,31 @@ func (c *cacheServerClient) GetClientID(ctx context.Context, in *AssignClientID,
 	return out, nil
 }
 
+func (c *cacheServerClient) SetItem(ctx context.Context, in *SetItemParams, opts ...grpc.CallOption) (*SetItemResult, error) {
+	out := new(SetItemResult)
+	err := c.cc.Invoke(ctx, "/cachegrpc.CacheServer/SetItem", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *cacheServerClient) GetItem(ctx context.Context, in *GetItemParams, opts ...grpc.CallOption) (*GetItemResult, error) {
+	out := new(GetItemResult)
+	err := c.cc.Invoke(ctx, "/cachegrpc.CacheServer/GetItem", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CacheServerServer is the server API for CacheServer service.
 // All implementations must embed UnimplementedCacheServerServer
 // for forward compatibility
 type CacheServerServer interface {
 	GetClientID(context.Context, *AssignClientID) (*AssignedClientID, error)
+	SetItem(context.Context, *SetItemParams) (*SetItemResult, error)
+	GetItem(context.Context, *GetItemParams) (*GetItemResult, error)
 	mustEmbedUnimplementedCacheServerServer()
 }
 
@@ -56,6 +78,12 @@ type UnimplementedCacheServerServer struct {
 
 func (UnimplementedCacheServerServer) GetClientID(context.Context, *AssignClientID) (*AssignedClientID, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetClientID not implemented")
+}
+func (UnimplementedCacheServerServer) SetItem(context.Context, *SetItemParams) (*SetItemResult, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetItem not implemented")
+}
+func (UnimplementedCacheServerServer) GetItem(context.Context, *GetItemParams) (*GetItemResult, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetItem not implemented")
 }
 func (UnimplementedCacheServerServer) mustEmbedUnimplementedCacheServerServer() {}
 
@@ -88,6 +116,42 @@ func _CacheServer_GetClientID_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CacheServer_SetItem_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetItemParams)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CacheServerServer).SetItem(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/cachegrpc.CacheServer/SetItem",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CacheServerServer).SetItem(ctx, req.(*SetItemParams))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CacheServer_GetItem_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetItemParams)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CacheServerServer).GetItem(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/cachegrpc.CacheServer/GetItem",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CacheServerServer).GetItem(ctx, req.(*GetItemParams))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CacheServer_ServiceDesc is the grpc.ServiceDesc for CacheServer service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -98,6 +162,14 @@ var CacheServer_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetClientID",
 			Handler:    _CacheServer_GetClientID_Handler,
+		},
+		{
+			MethodName: "SetItem",
+			Handler:    _CacheServer_SetItem_Handler,
+		},
+		{
+			MethodName: "GetItem",
+			Handler:    _CacheServer_GetItem_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
