@@ -13,6 +13,8 @@ service CacheServer {
   rpc SetItem(SetItemParams) returns (SetItemResult) {}
 
   rpc GetItem(GetItemParams) returns (GetItemResult) {}
+
+  rpc SubscribeItem(GetItemParams) returns(stream GetItemResult) {}
 }
 
 message AssignClientID {

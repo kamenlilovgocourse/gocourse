@@ -56,13 +56,17 @@ func ScanExpListRoutine() {
 		now := time.Now().UTC()
 		expListLock.Lock()
 		for expList != nil {
-			log.Printf("comparing now=%v item=%v\n", now, expList.Expiry)
 			if expList.Expiry.After(now) {
 				// No need to scan further, there's yet time for this item
 				break
 			}
 			// Remove this item
 			log.Printf("Removing stale item %s at %v\n", expList.ID.Compose(), now)
+			as := item.ID{Owner: expList.ID.Owner, Service: expList.ID.Service, Name: expList.ID.Name}
+			hash := as.HashKey()
+			mapsLock[hash].Lock()
+			delete(maps[hash], as.Compose())
+			mapsLock[hash].Unlock()
 			expList = expList.next
 			// Rescan, maybe more items are expired
 		}

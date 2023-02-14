@@ -29,7 +29,7 @@ var parseAssn *regexp.Regexp
 
 func init() {
 	parseID = regexp.MustCompile(`(?P<ow>[^:]*)\:(?P<se>[^:]*)\:(?P<na>.*)`)
-	parseAssn = regexp.MustCompile(`(?P<ow>[^:]*)\:(?P<se>[^:]*)\:(?P<na>[^=]*)\=(?P<va>[^,]*)(\,(?P<ex>[0-9]+))?`)
+	parseAssn = regexp.MustCompile(`(?P<ow>[^:]*)\:(?P<se>[^:]*)\:(?P<na>[^:=]*)\=(?P<va>[^,]*)(\,(?P<ex>[0-9]+))?`)
 }
 
 func (id *ID) HashKey() int {

@@ -42,10 +42,31 @@ func parseCommand(input string) (iCmd, iParam string) {
 	return iCmd, iParam
 }
 
+func subscribeListener(client cachegrpc.CacheServerClient, id item.ID) {
+	ip := cachegrpc.GetItemParams{Owner: id.Owner, Service: id.Service, Name: id.Name}
+	stream, err1 := client.SubscribeItem(context.Background(), &ip)
+	if err1 != nil {
+		fmt.Printf("Error subscribing to %s: %v\n", id.Compose(), err1)
+		return
+	}
+	for {
+		res, err := stream.Recv()
+		if err == io.EOF {
+			return
+		}
+		if err != nil {
+			fmt.Printf("Error while receiving subscription: %v\n", err)
+			return
+		}
+		fmt.Printf("Received sub for %s: new value %s\n", id.Compose(), res.Value)
+	}
+}
+
 func commandHelp() {
 	fmt.Println("\nAvailable commands:")
 	fmt.Println("set user:service:item=value,expiry sets an item in the cache")
 	fmt.Println("get user:service:item retrieves an item from the cache")
+	fmt.Println("subscribe user:service:item subscribes for updates to a shared cached item")
 	fmt.Println("quit quits the client")
 }
 
@@ -110,7 +131,16 @@ func main() {
 				fmt.Println("Error from service: ", err2)
 				continue
 			}
-			fmt.Printf("Result: %s, %#v", ipres.Value, ipres.Expiry)
+			fmt.Printf("Result: %s\n", ipres.Value)
+
+		case iCmd == "subscribe":
+			iassn := item.ID{}
+			err := iassn.Parse(iParam)
+			if err != nil {
+				fmt.Println("Error in expression: ", err)
+				continue
+			}
+			go subscribeListener(client, iassn)
 
 		case iCmd == "quit":
 			var t cachegrpc.AssignClientID

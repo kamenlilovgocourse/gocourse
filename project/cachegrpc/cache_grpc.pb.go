@@ -25,6 +25,7 @@ type CacheServerClient interface {
 	GetClientID(ctx context.Context, in *AssignClientID, opts ...grpc.CallOption) (*AssignedClientID, error)
 	SetItem(ctx context.Context, in *SetItemParams, opts ...grpc.CallOption) (*SetItemResult, error)
 	GetItem(ctx context.Context, in *GetItemParams, opts ...grpc.CallOption) (*GetItemResult, error)
+	SubscribeItem(ctx context.Context, in *GetItemParams, opts ...grpc.CallOption) (CacheServer_SubscribeItemClient, error)
 }
 
 type cacheServerClient struct {
@@ -62,6 +63,38 @@ func (c *cacheServerClient) GetItem(ctx context.Context, in *GetItemParams, opts
 	return out, nil
 }
 
+func (c *cacheServerClient) SubscribeItem(ctx context.Context, in *GetItemParams, opts ...grpc.CallOption) (CacheServer_SubscribeItemClient, error) {
+	stream, err := c.cc.NewStream(ctx, &CacheServer_ServiceDesc.Streams[0], "/cachegrpc.CacheServer/SubscribeItem", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &cacheServerSubscribeItemClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type CacheServer_SubscribeItemClient interface {
+	Recv() (*GetItemResult, error)
+	grpc.ClientStream
+}
+
+type cacheServerSubscribeItemClient struct {
+	grpc.ClientStream
+}
+
+func (x *cacheServerSubscribeItemClient) Recv() (*GetItemResult, error) {
+	m := new(GetItemResult)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // CacheServerServer is the server API for CacheServer service.
 // All implementations must embed UnimplementedCacheServerServer
 // for forward compatibility
@@ -69,6 +102,7 @@ type CacheServerServer interface {
 	GetClientID(context.Context, *AssignClientID) (*AssignedClientID, error)
 	SetItem(context.Context, *SetItemParams) (*SetItemResult, error)
 	GetItem(context.Context, *GetItemParams) (*GetItemResult, error)
+	SubscribeItem(*GetItemParams, CacheServer_SubscribeItemServer) error
 	mustEmbedUnimplementedCacheServerServer()
 }
 
@@ -84,6 +118,9 @@ func (UnimplementedCacheServerServer) SetItem(context.Context, *SetItemParams) (
 }
 func (UnimplementedCacheServerServer) GetItem(context.Context, *GetItemParams) (*GetItemResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetItem not implemented")
+}
+func (UnimplementedCacheServerServer) SubscribeItem(*GetItemParams, CacheServer_SubscribeItemServer) error {
+	return status.Errorf(codes.Unimplemented, "method SubscribeItem not implemented")
 }
 func (UnimplementedCacheServerServer) mustEmbedUnimplementedCacheServerServer() {}
 
@@ -152,6 +189,27 @@ func _CacheServer_GetItem_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CacheServer_SubscribeItem_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(GetItemParams)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(CacheServerServer).SubscribeItem(m, &cacheServerSubscribeItemServer{stream})
+}
+
+type CacheServer_SubscribeItemServer interface {
+	Send(*GetItemResult) error
+	grpc.ServerStream
+}
+
+type cacheServerSubscribeItemServer struct {
+	grpc.ServerStream
+}
+
+func (x *cacheServerSubscribeItemServer) Send(m *GetItemResult) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 // CacheServer_ServiceDesc is the grpc.ServiceDesc for CacheServer service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -172,6 +230,12 @@ var CacheServer_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _CacheServer_GetItem_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "SubscribeItem",
+			Handler:       _CacheServer_SubscribeItem_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "cache.proto",
 }
