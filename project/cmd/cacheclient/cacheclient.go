@@ -21,6 +21,8 @@ var (
 	serverAddr = flag.String("addr", "localhost:3030", "The server address in the format of host:port")
 )
 
+// Parse a command input via bufio.NewReader.ReadString, truncate any trailing cr and lf,
+// and return the first word (the command name) and the second part (the command string)
 func parseCommand(input string) (iCmd, iParam string) {
 	input = strings.TrimSuffix(input, "\n")
 	input = strings.TrimSuffix(input, "\r")
@@ -42,6 +44,10 @@ func parseCommand(input string) (iCmd, iParam string) {
 	return iCmd, iParam
 }
 
+// Handle the 'subscribe' user command. This function is run in a separate goroutine.
+// It will issue a SubscribeItem gRPC call passing the server an item.ID obtained
+// from the console, and will repeatedly listen on the formed stream and print
+// any received subscriptions on the console
 func subscribeListener(client cachegrpc.CacheServerClient, id item.ID) {
 	ip := cachegrpc.GetItemParams{Owner: id.Owner, Service: id.Service, Name: id.Name}
 	stream, err1 := client.SubscribeItem(context.Background(), &ip)
@@ -62,6 +68,7 @@ func subscribeListener(client cachegrpc.CacheServerClient, id item.ID) {
 	}
 }
 
+// Display help on the available commands for the command line client
 func commandHelp() {
 	fmt.Println("\nAvailable commands:")
 	fmt.Println("set user:service:item=value,expiry sets an item in the cache")
@@ -70,10 +77,12 @@ func commandHelp() {
 	fmt.Println("quit quits the client")
 }
 
+// Main client routine
 func main() {
 	flag.Parse()
 	fmt.Printf("cacheclient seeking server at %s\n", *serverAddr)
 
+	// Contact the server
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	conn, err := grpc.Dial(*serverAddr, opts...)
@@ -83,6 +92,10 @@ func main() {
 	defer conn.Close()
 	client := cachegrpc.NewCacheServerClient(conn)
 
+	// Issue a GetClientID call and just display the received value on the
+	// console. The user is not obligated to use this value as the owner name
+	// in set, get and subscribe calls, but it's a good practice to keep your
+	// own private ID in a multiuser environment
 	ctx := context.Background()
 	clientID, err := client.GetClientID(ctx, &cachegrpc.AssignClientID{})
 	if err != nil {
@@ -105,6 +118,8 @@ func main() {
 		iCmd, iParam := parseCommand(input)
 		switch {
 		case iCmd == "set":
+			// The set command accepts an assignment as its parameter. Parse it out, then call
+			// the server to set the data item as requested by the client
 			iassn, err := item.ParseAssignment(iParam)
 			if err != nil {
 				fmt.Println("Error in expression: ", err)
@@ -119,6 +134,8 @@ func main() {
 			client.SetItem(ctx, &ip)
 
 		case iCmd == "get":
+			// The get command accepts an item ID as its parameter. Parse it out, then
+			// call the server to retrieve and print the value, if any
 			iassn := item.ID{}
 			err := iassn.Parse(iParam)
 			if err != nil {
@@ -134,6 +151,8 @@ func main() {
 			fmt.Printf("Result: %s\n", ipres.Value)
 
 		case iCmd == "subscribe":
+			// The subscribe command accepts an item ID as its parameter. Parse it out, then
+			// spawn a goroutine to perform asynchronous listening to the formed stream request
 			iassn := item.ID{}
 			err := iassn.Parse(iParam)
 			if err != nil {
@@ -143,6 +162,7 @@ func main() {
 			go subscribeListener(client, iassn)
 
 		case iCmd == "quit":
+			// quit quits the application as an alternative to ctrl+C
 			var t cachegrpc.AssignClientID
 			t.Dummy = 1
 			return

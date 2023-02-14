@@ -9,7 +9,7 @@ The client is implemented as a console app that connects to the server,
 obtains a "private" ID, and lets the user type commands to set and retrieve
 values from the cache server.
 
-## ompiling
+## Compiling
 
 To compile and run the server side, type
 
@@ -25,7 +25,7 @@ go run project\cmd\cacheclient\cacheclient.go
 Optional command line parameter is --addr, which should be in the
 syntax host:port - this is where the server will be contacted
 
-##Client commands
+## Client commands
 
 ### set
 

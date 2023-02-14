@@ -6,7 +6,8 @@ import "google/protobuf/timestamp.proto";
 
 package cachegrpc;
 
-// Interface exported by the server.
+// Interface exported by the server. A single interface encompasses all
+// supported commands: GetClientID, SetItem, GetItem, SubscribeItem
 service CacheServer {
   rpc GetClientID(AssignClientID) returns (AssignedClientID) {}
 

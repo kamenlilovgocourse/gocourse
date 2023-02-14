@@ -13,6 +13,11 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+// A map entry consists of the value of the cache item, an optional expiry,
+// plus a (empty or nonempty) slice of subscriptions. If subscriptions are
+// present, every time the value is updated, the appropriate subscriber
+// listeners goroutines are notified via the channel so they can generate
+// a push notification to a connected client
 type mapEntry struct {
 	Value  string
 	Expiry *time.Time
@@ -33,6 +38,7 @@ func init() {
 	StopServerChan = make(chan struct{})
 }
 
+// The gRPC CacheServer service with out own implementations
 type CacheServer struct {
 	cachegrpc.UnimplementedCacheServerServer
 }
@@ -42,12 +48,17 @@ func NewServer() *CacheServer {
 	return s
 }
 
+// GetClientID uses a globally unique, incrementing int counter to provide unique IDs to cache
+// clients that are interested in having one
 func (s *CacheServer) GetClientID(context.Context, *cachegrpc.AssignClientID) (*cachegrpc.AssignedClientID, error) {
 	ret := &cachegrpc.AssignedClientID{}
 	ret.Id = fmt.Sprintf("%d", atomic.AddInt64(&nextClientId, 1))
 	return ret, nil
 }
 
+// SetItem sets a cache item with a given ID, value and optional expiry on the server. If the
+// item value was already set, and any subscribers are attached to it, they are notified that the
+// value is updated so they can push a notification to a connected client
 func (s *CacheServer) SetItem(ctx context.Context, p *cachegrpc.SetItemParams) (*cachegrpc.SetItemResult, error) {
 	as := item.ID{Owner: p.Owner, Service: p.Service, Name: p.Name}
 	hash := as.HashKey()
@@ -74,6 +85,7 @@ func (s *CacheServer) SetItem(ctx context.Context, p *cachegrpc.SetItemParams) (
 	return ret, nil
 }
 
+// Retrieve the value of a previously set cache item
 func (s *CacheServer) GetItem(ctx context.Context, p *cachegrpc.GetItemParams) (*cachegrpc.GetItemResult, error) {
 	as := item.ID{Owner: p.Owner, Service: p.Service, Name: p.Name}
 	hash := as.HashKey()
@@ -91,6 +103,8 @@ func (s *CacheServer) GetItem(ctx context.Context, p *cachegrpc.GetItemParams) (
 	return &resultFmt, nil
 }
 
+// Helper routine: given a chan struct{}, and a slice of chan structs, locate
+// the entry and remove it from the slice, returning the new slice
 func remove(slice []chan struct{}, s chan struct{}) []chan struct{} {
 	for i := 0; i < len(slice); i++ {
 		if slice[i] == s {
@@ -100,6 +114,9 @@ func remove(slice []chan struct{}, s chan struct{}) []chan struct{} {
 	return nil
 }
 
+// Service the SubscribeItem API call. This will typically be invoked by a client from a dedicated
+// goroutine that will expect the server to occasionally send it notifications that the item with
+// the specified ID has been updated, and this routine will send the updated value
 func (s *CacheServer) SubscribeItem(p *cachegrpc.GetItemParams, stream cachegrpc.CacheServer_SubscribeItemServer) error {
 	as := item.ID{Owner: p.Owner, Service: p.Service, Name: p.Name}
 	hash := as.HashKey()
