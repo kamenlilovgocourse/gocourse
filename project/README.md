@@ -1,5 +1,5 @@
 
-#gRPC demo cache storage server
+# gRPC demo cache storage server
 
 This application demonstrates a mini version of memcached implemented
 entirely in Golang, using gRPC to communicate between the client and 
@@ -9,7 +9,7 @@ The client is implemented as a console app that connects to the server,
 obtains a "private" ID, and lets the user type commands to set and retrieve
 values from the cache server.
 
-##Compiling
+## ompiling
 
 To compile and run the server side, type
 
@@ -27,7 +27,7 @@ syntax host:port - this is where the server will be contacted
 
 ##Client commands
 
-###set
+### set
 
 set owner:service:name=value[,expiry]
 
@@ -35,10 +35,14 @@ This will set a cache entry in the server, with an optional expiry
 value expressed as number of seconds, which can later be retrieved
 via get or subscribe
 
+### get
+
 get owner:service:name
 
 This will retrieve a cache entry from the server, in case one is
 present
+
+### subscribe
 
 subscribe owner:service:name
 
